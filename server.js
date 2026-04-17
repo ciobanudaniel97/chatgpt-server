@@ -16,14 +16,14 @@ app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "";
 
-    // Only allow accounting / tax related topics
     const allowedTopics = [
       "tax", "vat", "hmrc", "self employed", "self-employed",
       "limited company", "ltd", "cis", "payroll", "accounting",
       "bookkeeping", "dividend", "dividends", "expenses",
       "mtd", "making tax digital", "corporation tax",
       "self assessment", "self-assessment", "utr", "company",
-      "sole trader", "landlord", "rental income"
+      "sole trader", "landlord", "rental income", "paye",
+      "contractor", "contractors", "director", "directors"
     ];
 
     const lowerMessage = userMessage.toLowerCase();
@@ -32,7 +32,7 @@ app.post("/chat", async (req, res) => {
     if (!isRelevant) {
       return res.json({
         reply:
-          "I can only help with accounting and tax-related questions connected to our services.\n\n⚠️ This is general guidance only and not professional advice.\n\nNeed help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk"
+          "I can only help with accounting and tax-related questions connected to our services.\n\n⚠️ This is general guidance only and not professional advice.\n\nNeed help with your exact situation? Contact us using the button below."
       });
     }
 
@@ -67,7 +67,7 @@ STRICT RULES:
 - Always include a short disclaimer that the response is general guidance only and not professional advice.
 - Every answer must end with this exact CTA:
 
-Need help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk
+Need help with your exact situation? Contact us using the button below.
 
 User question: ${userMessage}
 `
@@ -100,13 +100,13 @@ User question: ${userMessage}
     }
 
     const disclaimer = "\n\n⚠️ This is general guidance only and not professional advice.";
-    const cta = "\n\nNeed help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk";
+    const cta = "\n\nNeed help with your exact situation? Contact us using the button below.";
 
     if (!reply.includes("general guidance only")) {
       reply += disclaimer;
     }
 
-    if (!reply.includes("Need help with your exact situation?")) {
+    if (!reply.includes("Contact us using the button below")) {
       reply += cta;
     }
 
