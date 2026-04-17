@@ -14,7 +14,27 @@ app.get("/", (req, res) => {
 
 app.post("/chat", async (req, res) => {
   try {
-    const userMessage = req.body.message;
+    const userMessage = req.body.message || "";
+
+    // Only allow accounting / tax related topics
+    const allowedTopics = [
+      "tax", "vat", "hmrc", "self employed", "self-employed",
+      "limited company", "ltd", "cis", "payroll", "accounting",
+      "bookkeeping", "dividend", "dividends", "expenses",
+      "mtd", "making tax digital", "corporation tax",
+      "self assessment", "self-assessment", "utr", "company",
+      "sole trader", "landlord", "rental income"
+    ];
+
+    const lowerMessage = userMessage.toLowerCase();
+    const isRelevant = allowedTopics.some(word => lowerMessage.includes(word));
+
+    if (!isRelevant) {
+      return res.json({
+        reply:
+          "I can only help with accounting and tax-related questions connected to our services.\n\n⚠️ This is general guidance only and not professional advice.\n\nNeed help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk"
+      });
+    }
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -24,7 +44,33 @@ app.post("/chat", async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
-        input: `You are a helpful UK accounting assistant for DCTaxAgent. Answer clearly and briefly.\n\nUser question: ${userMessage}`
+        input: `
+You are TAXACE, the website assistant for DCTaxAgent, a UK accounting firm.
+
+YOUR ROLE:
+You only answer questions related to:
+- UK tax
+- Self-employment
+- Limited companies
+- VAT
+- CIS
+- Payroll
+- HMRC compliance
+- Accounting services
+
+STRICT RULES:
+- Keep every answer brief, maximum 2-3 short sentences.
+- Give general guidance only.
+- Do not provide detailed calculations, full tax advice, or complete solutions.
+- If the answer depends on personal circumstances, say so clearly.
+- If the question is not related to accounting or tax, say you can only help with accounting and tax-related questions connected to our services.
+- Always include a short disclaimer that the response is general guidance only and not professional advice.
+- Every answer must end with this exact CTA:
+
+Need help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk
+
+User question: ${userMessage}
+`
       })
     });
 
@@ -53,7 +99,16 @@ app.post("/chat", async (req, res) => {
       }
     }
 
-    console.log("FINAL REPLY:", reply);
+    const disclaimer = "\n\n⚠️ This is general guidance only and not professional advice.";
+    const cta = "\n\nNeed help with your exact situation? Message us on WhatsApp: https://wa.me/447587532646?text=Hello,%20I%20need%20help%20with%20my%20tax%20situation. or email us at contact@dctaxagent.co.uk";
+
+    if (!reply.includes("general guidance only")) {
+      reply += disclaimer;
+    }
+
+    if (!reply.includes("Need help with your exact situation?")) {
+      reply += cta;
+    }
 
     res.json({ reply });
   } catch (error) {
