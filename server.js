@@ -24,20 +24,36 @@ app.post("/chat", async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
-        input: userMessage
+        input: `You are a helpful UK accounting assistant for DCTaxAgent. Answer clearly and briefly.\n\nUser question: ${userMessage}`
       })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
+      console.log("OPENAI ERROR:", data);
       return res.status(response.status).json(data);
     }
 
     let reply = "Sorry, I could not generate a response.";
-    if (data.output_text) {
-      reply = data.output_text;
+
+    if (data.output_text && data.output_text.trim()) {
+      reply = data.output_text.trim();
+    } else if (data.output && Array.isArray(data.output)) {
+      for (const item of data.output) {
+        if (item.content && Array.isArray(item.content)) {
+          for (const part of item.content) {
+            if (part.text && typeof part.text === "string" && part.text.trim()) {
+              reply = part.text.trim();
+              break;
+            }
+          }
+        }
+        if (reply !== "Sorry, I could not generate a response.") break;
+      }
     }
+
+    console.log("FINAL REPLY:", reply);
 
     res.json({ reply });
   } catch (error) {
