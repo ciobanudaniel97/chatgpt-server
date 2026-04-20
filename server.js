@@ -15,6 +15,7 @@ app.get("/", (req, res) => {
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message || "";
+    const language = req.body.language || "en";
 
     const allowedTopics = [
       "tax", "vat", "hmrc", "self employed", "self-employed",
@@ -22,19 +23,38 @@ app.post("/chat", async (req, res) => {
       "bookkeeping", "dividend", "dividends", "expenses",
       "mtd", "making tax digital", "corporation tax",
       "self assessment", "self-assessment", "utr", "company",
-      "sole trader", "landlord", "rental income", "paye",
-      "contractor", "contractors", "director", "directors"
+      "sole trader", "landlord", "rental income", "director",
+      "companies house", "tax return", "refund", "penalty"
     ];
 
     const lowerMessage = userMessage.toLowerCase();
     const isRelevant = allowedTopics.some(word => lowerMessage.includes(word));
 
+    // 🌍 Language-based responses
+    const cta =
+      language === "ro"
+        ? "\n\nAi nevoie de ajutor pentru situația ta exactă? Contactează-ne folosind butonul de mai jos."
+        : "\n\nNeed help with your exact situation? Contact us using the button below.";
+
+    const disclaimer =
+      language === "ro"
+        ? "\n\n⚠️ Aceste informații sunt doar orientative și nu constituie consultanță profesională."
+        : "\n\n⚠️ This is general guidance only and not professional advice.";
+
+    // ❌ If question is not relevant
     if (!isRelevant) {
       return res.json({
         reply:
-          "I can only help with accounting and tax-related questions connected to our services.\n\n⚠️ This is general guidance only and not professional advice.\n\nNeed help with your exact situation? Contact us using the button below."
+          language === "ro"
+            ? "Pot ajuta doar cu întrebări legate de contabilitate și taxe, în legătură cu serviciile noastre." + cta
+            : "I can only help with accounting and tax-related questions connected to our services." + cta
       });
     }
+
+    const languageInstruction =
+      language === "ro"
+        ? "Reply only in Romanian."
+        : "Reply only in English.";
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -46,6 +66,8 @@ app.post("/chat", async (req, res) => {
         model: "gpt-4.1-mini",
         input: `
 You are TAXACE, the website assistant for DCTaxAgent, a UK accounting firm.
+
+${languageInstruction}
 
 YOUR ROLE:
 You only answer questions related to:
@@ -59,15 +81,12 @@ You only answer questions related to:
 - Accounting services
 
 STRICT RULES:
-- Keep every answer brief, maximum 2-3 short sentences.
-- Give general guidance only.
-- Do not provide detailed calculations, full tax advice, or complete solutions.
-- If the answer depends on personal circumstances, say so clearly.
-- If the question is not related to accounting or tax, say you can only help with accounting and tax-related questions connected to our services.
-- Always include a short disclaimer that the response is general guidance only and not professional advice.
-- Every answer must end with this exact CTA:
-
-Need help with your exact situation? Contact us using the button below.
+- Keep every answer brief (2-3 short sentences max)
+- Give general guidance only
+- Do NOT give full advice or full solutions
+- If the answer depends on personal circumstances, say so clearly
+- Always keep answers business-focused and encourage contact
+- Always end with a CTA directing to contact
 
 User question: ${userMessage}
 `
@@ -99,18 +118,23 @@ User question: ${userMessage}
       }
     }
 
-    const disclaimer = "\n\n⚠️ This is general guidance only and not professional advice.";
-    const cta = "\n\nNeed help with your exact situation? Contact us using the button below.";
+    // ✅ Add disclaimer only if giving real advice
+    const needsDisclaimer =
+      isRelevant &&
+      !reply.toLowerCase().includes("i can only help") &&
+      !reply.toLowerCase().includes("pot ajuta doar");
 
-    if (!reply.includes("general guidance only")) {
+    if (needsDisclaimer && !reply.includes("⚠️")) {
       reply += disclaimer;
     }
 
-    if (!reply.includes("Contact us using the button below")) {
+    // ✅ Always ensure CTA is included
+    if (!reply.includes("Contact")) {
       reply += cta;
     }
 
     res.json({ reply });
+
   } catch (error) {
     console.error("SERVER ERROR:", error);
     res.status(500).json({ error: "Something went wrong." });
